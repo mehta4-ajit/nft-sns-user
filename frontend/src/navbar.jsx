@@ -35,7 +35,7 @@ export default function Navbar() {
               alt="Logo"
               className="h-12 w-12 sm:h-14 sm:w-14"
             />
-            <span className="text-xl sm:text-2xl font-bold text-white">
+            <span className="text-xl sm:text-2xl font-bold text-white glow">
               MINTIOLAB
             </span>
           </div>

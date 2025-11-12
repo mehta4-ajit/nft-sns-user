@@ -10,6 +10,11 @@ import UploadMintNFT from "./UploadNFT.jsx";
 import NFTMintPage from "./nftmodals.jsx";
 import MyNFTsPage from "./mynft.jsx";
 import NFTDashboard from "./feed.jsx";
+import SocialIntegration from "./distribution.jsx";
+import DistributionDashboard from "./distributiondashboard.jsx";
+import DistributionPage from "./distributioncomplete.jsx";
+import ShareModal from "./sharemodal.jsx";
+import NFTDisplay from "./detailsnft.jsx";
 
 function App() {
   return (
@@ -24,6 +29,12 @@ function App() {
         <Route path="/nftmodals" element={<NFTMintPage/>} />
         <Route path="/mynft" element={<MyNFTsPage/>} />
         <Route path="/feed" element={<NFTDashboard/>} />
+        <Route path="/distribution1" element={<SocialIntegration/>} />
+        <Route path="/distribution2" element={<DistributionDashboard/>} />
+        <Route path="/districomplete" element={<DistributionPage/>} />
+        <Route path="/sharemodal" element={<ShareModal/>} />
+        <Route path="/detail" element={<NFTDisplay/>} />
+
       </Routes>
     </Router>
   );
