@@ -5,7 +5,6 @@ import ProfileSettings from "./profile.jsx";
 import Wallets from "./wallets.jsx";
 import Login from "./login.jsx";
 import RegisterPage from "./register.jsx";
-// import IndexPage from "./index.jsx";
 
 function App() {
   return (

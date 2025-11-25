@@ -12,7 +12,7 @@ import WalletConnectProvider from "@walletconnect/ethereum-provider";
 import CoinbaseWalletSDK from "@coinbase/wallet-sdk";
 
 export default function Wallets() {
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);9
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [walletAddress, setWalletAddress] = useState("");
   const [balance, setBalance] = useState(null);
@@ -49,7 +49,7 @@ export default function Wallets() {
   // REGISTER WALLET IN BACKEND
   const registerWalletBackend = async (address) => {
     try {
-      const tempUserId = localStorage.getItem("temp_user_id"); // from SIGNUP
+      const tempUserId = localStorage.getItem("temp_user_id");
 
       const bodyData = {
         wallet_address: address,
@@ -57,7 +57,7 @@ export default function Wallets() {
       };
 
       if (tempUserId) {
-        bodyData.user_id = tempUserId;  // <- UPDATE EXISTING USER
+        bodyData.user_id = tempUserId;
       }
 
       const res = await fetch("http://localhost:5000/api/auth/register-wallet", {
@@ -70,7 +70,7 @@ export default function Wallets() {
       if (!res.ok) throw new Error(data.message);
 
       localStorage.setItem("token", data.token);
-      localStorage.removeItem("temp_user_id"); // IMPORTANT
+      localStorage.removeItem("temp_user_id");
     } catch (err) {
       console.error(err);
       setAlert("error: " + err.message);
@@ -98,10 +98,16 @@ export default function Wallets() {
     try {
       if (!window.ethereum) throw new Error("Please install MetaMask.");
 
-      // Force fresh selection every time
-      await window.ethereum.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
+      // Request fresh permission
+      await window.ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
 
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+
       const address = accounts[0];
       setWalletAddress(address);
 
@@ -110,6 +116,8 @@ export default function Wallets() {
       await registerWalletBackend(address);
 
       setIsConnected(true);
+
+      //  Show alert AFTER successful connection
       setAlert("connected");
     } catch (err) {
       console.error(err);
@@ -122,16 +130,14 @@ export default function Wallets() {
   // ----------------------------
   const connectWalletConnect = async () => {
     try {
-      // Disconnect previous session if exists
-      if (window.wcProvider && window.wcProvider.disconnect) await window.wcProvider.disconnect();
+      if (window.wcProvider?.disconnect) await window.wcProvider.disconnect();
 
       const wcProvider = await WalletConnectProvider.init({
         projectId: "YOUR_PROJECT_ID",
-        chains: [1], // mainnet
+        chains: [1],
       });
 
-      window.wcProvider = wcProvider; // store globally for disconnect
-
+      window.wcProvider = wcProvider;
       await wcProvider.enable();
 
       const provider = getProvider(wcProvider);
@@ -143,6 +149,8 @@ export default function Wallets() {
       await registerWalletBackend(address);
 
       setIsConnected(true);
+
+      //  Alert only after success
       setAlert("connected");
     } catch (err) {
       console.error(err);
@@ -160,7 +168,11 @@ export default function Wallets() {
         appLogoUrl: "https://yourwebsite.com/logo.png",
       });
 
-      const provider = coinbase.makeWeb3Provider("https://mainnet.infura.io/v3/YOUR_INFURA_KEY", 1);
+      const provider = coinbase.makeWeb3Provider(
+        "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
+        1
+      );
+
       await provider.request({ method: "eth_requestAccounts" });
 
       const ethersProvider = getProvider(provider);
@@ -172,6 +184,8 @@ export default function Wallets() {
       await registerWalletBackend(address);
 
       setIsConnected(true);
+
+      // 🔥 Alert AFTER successful connection
       setAlert("connected");
     } catch (err) {
       console.error(err);
@@ -183,7 +197,7 @@ export default function Wallets() {
   // HANDLE WALLET SELECT
   // ----------------------------
   const handleWalletSelect = (wallet) => {
-    disconnectWallet(); // Reset state before connecting new wallet
+    disconnectWallet(); // reset previous wallet
     setSelectedWallet(wallet);
 
     if (wallet === "MetaMask") connectMetaMask();
@@ -249,15 +263,20 @@ export default function Wallets() {
             <div
               key={wallet.name}
               onClick={() => handleWalletSelect(wallet.name)}
-              className={`flex items-center gap-4 p-4 rounded-md cursor-pointer border-2 transition-all bg-[#09090B4D] ${selectedWallet === wallet.name ? "border-cyan-500 shadow-lg" : "border-[#18181B] hover:border-cyan-500"
-                }`}
+              className={`flex items-center gap-4 p-4 rounded-md cursor-pointer border-2 transition-all bg-[#09090B4D] ${
+                selectedWallet === wallet.name
+                  ? "border-cyan-500 shadow-lg"
+                  : "border-[#18181B] hover:border-cyan-500"
+              }`}
             >
               <img src={wallet.icon} className="w-8 h-8" />
               <div className="flex-1">
                 <h3 className="font-semibold">{wallet.name}</h3>
                 <p className="text-gray-400 text-sm">{wallet.name} connect</p>
               </div>
-              {selectedWallet === wallet.name && <img src={tickIcon} className="w-4 h-4" />}
+              {selectedWallet === wallet.name && (
+                <img src={tickIcon} className="w-4 h-4" />
+              )}
             </div>
           ))}
         </div>
@@ -272,11 +291,17 @@ export default function Wallets() {
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row gap-4">
-            <button onClick={disconnectWallet} className="w-full sm:w-1/2 border border-[#18181B] hover:bg-red-500/10 py-2.5 rounded-md">
+            <button
+              onClick={disconnectWallet}
+              className="w-full sm:w-1/2 border border-[#18181B] hover:bg-red-500/10 py-2.5 rounded-md"
+            >
               Disconnect Wallet
             </button>
 
-            <Link to="/profile" className="w-full sm:w-1/2 bg-gradient-to-r from-[#24CBF5] to-[#9952E0] text-black text-center py-2.5 rounded-md">
+            <Link
+              to="/profile"
+              className="w-full sm:w-1/2 bg-gradient-to-r from-[#24CBF5] to-[#9952E0] text-black text-center py-2.5 rounded-md"
+            >
               Continue to Profile
             </Link>
           </div>
@@ -285,13 +310,28 @@ export default function Wallets() {
 
       {/* ALERT */}
       {alert && (
-        <div className={`fixed right-8 top-20 bg-black border ${alert.includes("connected") ? "border-cyan-500" : "border-red-500"} rounded-xl px-6 py-4 w-80 shadow-xl`}>
-          <button onClick={() => setAlert(null)} className="absolute top-2 right-2 text-gray-400 hover:text-white">
+        <div
+          className={`fixed right-8 top-20 bg-black border ${
+            alert.includes("connected")
+              ? "border-cyan-500"
+              : alert.includes("disconnected")
+              ? "border-yellow-500"
+              : "border-red-500"
+          } rounded-xl px-6 py-4 w-80 shadow-xl`}
+        >
+          <button
+            onClick={() => setAlert(null)}
+            className="absolute top-2 right-2 text-gray-400 hover:text-white"
+          >
             <X className="w-4 h-4" />
           </button>
 
           <h2 className="text-white text-lg font-semibold mb-1">
-            {alert.includes("connected") ? "Wallet Connected" : alert.includes("disconnected") ? "Wallet Disconnected" : alert}
+            {alert.includes("connected")
+              ? "Wallet Connected"
+              : alert.includes("disconnected")
+              ? "Wallet Disconnected"
+              : "Error"}
           </h2>
 
           <p className="text-gray-400 text-sm">{alert}</p>

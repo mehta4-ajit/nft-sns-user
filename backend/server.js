@@ -1,8 +1,10 @@
 const express = require("express");
-const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
+
+const sequelize = require("./sequelize");
+const User = require("./User");
 
 const app = express();
 app.use(cors());
@@ -10,17 +12,6 @@ app.use(express.json());
 
 const PORT = 5000;
 const JWT_SECRET = "your_jwt_secret_here";
-
-// -------------------------
-// DB CONNECTION
-// -------------------------
-const db = mysql.createPool({
-  host: "151.106.113.26",
-  user: "nftsns02",
-  password: "NN9CNXJ3",
-  database: "nftsns",
-  port: 55681,
-});
 
 // -------------------------
 // JWT
@@ -38,13 +29,16 @@ function generateToken(user) {
   );
 }
 
-
+// -------------------------
+// AUTH MIDDLEWARE
+// -------------------------
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader)
     return res.status(401).json({ message: "No token provided" });
 
   const token = authHeader.split(" ")[1];
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
@@ -64,21 +58,22 @@ app.post("/api/auth/register", async (req, res) => {
     if (!full_name || !email || !password || !role)
       return res.status(400).json({ message: "All fields are required" });
 
-    const [existing] = await db.query("SELECT id FROM users WHERE email = ?", [
-      email,
-    ]);
-    if (existing.length > 0)
+    const existing = await User.findOne({ where: { email } });
+    if (existing)
       return res.status(409).json({ message: "Email already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const [result] = await db.query(
-      "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)",
-      [full_name, email, hashedPassword, role]
-    );
+
+    const newUser = await User.create({
+      full_name,
+      email,
+      password: hashedPassword,
+      role,
+    });
 
     return res.status(201).json({
       message: "Account created successfully",
-      user_id: result.insertId,
+      user_id: newUser.id,
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -93,13 +88,9 @@ app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const [users] = await db.query("SELECT * FROM users WHERE email = ?", [
-      email,
-    ]);
-    if (users.length === 0)
+    const user = await User.findOne({ where: { email } });
+    if (!user)
       return res.status(401).json({ message: "Invalid credentials" });
-
-    const user = users[0];
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword)
@@ -129,27 +120,21 @@ app.post("/api/auth/register-wallet", async (req, res) => {
     if (!wallet_address)
       return res.status(400).json({ message: "Wallet address is required" });
 
-    // -------------------------
-    // CASE 1: Wallet linking after signup
-    // -------------------------
+    // CASE 1: User already signed up → just link wallet
     if (user_id) {
-      const [users] = await db.query("SELECT * FROM users WHERE id = ?", [
-        user_id,
-      ]);
+      const user = await User.findByPk(user_id);
 
-      if (users.length === 0)
+      if (!user)
         return res.status(404).json({ message: "User not found" });
 
-      await db.query(
-        "UPDATE users SET wallet_address = ?, role = ? WHERE id = ?",
-        [wallet_address, role || users[0].role, user_id]
-      );
-
-      const updatedUser = {
-        ...users[0],
+      await user.update({
         wallet_address,
-        role: role || users[0].role,
-      };
+        role: role || user.role,
+      });
+
+      const updatedUser = user.toJSON();
+      updatedUser.wallet_address = wallet_address;
+      updatedUser.role = role || user.role;
 
       const token = generateToken(updatedUser);
 
@@ -160,73 +145,71 @@ app.post("/api/auth/register-wallet", async (req, res) => {
       });
     }
 
-    // -------------------------
-    // CASE 2: Direct Wallet Login or New Wallet Signup
-    // -------------------------
-    const [existing] = await db.query(
-      "SELECT * FROM users WHERE wallet_address = ?",
-      [wallet_address]
-    );
+    // CASE 2: Wallet login or auto create user
+    let user = await User.findOne({ where: { wallet_address } });
 
-    let user;
-
-    if (existing.length > 0) {
-      user = existing[0];
-    } else {
-      const [result] = await db.query(
-        "INSERT INTO users (wallet_address, role) VALUES (?, ?)",
-        [wallet_address, role || "User"]
-      );
-
-      user = {
-        id: result.insertId,
+    if (!user) {
+      user = await User.create({
         wallet_address,
         role: role || "User",
-      };
+      });
+
+      return res.json({
+        message: "Wallet registered successfully",
+        user_id: user.id,
+        token: generateToken(user),
+      });
     }
 
-    const token = generateToken(user);
-
     return res.json({
-      message:
-        existing.length > 0
-          ? "Wallet login successful"
-          : "Wallet registered successfully",
+      message: "Wallet login successful",
       user_id: user.id,
-      token,
+      token: generateToken(user),
     });
+
   } catch (err) {
     console.error("Wallet register/login error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
+// -------------------------
+// GET USER PROFILE
+// -------------------------
 app.get("/api/user/profile", authMiddleware, async (req, res) => {
   try {
-    const [rows] = await db.query(
-      "SELECT id, full_name, bio, twitter, instagram, website, wallet_address FROM users WHERE id = ?",
-      [req.user.id]
-    );
+    const user = await User.findByPk(req.user.id, {
+      attributes: [
+        "id",
+        "full_name",
+        "bio",
+        "twitter",
+        "instagram",
+        "website",
+        "wallet_address",
+      ],
+    });
 
-    if (rows.length === 0)
+    if (!user)
       return res.status(404).json({ message: "User not found" });
 
-    res.json({ profile: rows[0] });
+    res.json({ profile: user });
   } catch (err) {
     console.error("Profile fetch error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
+// -------------------------
+// UPDATE PROFILE
+// -------------------------
 app.put("/api/user/profile", authMiddleware, async (req, res) => {
   try {
     const { full_name, bio, twitter, instagram, website } = req.body;
 
-    await db.query(
-      `UPDATE users 
-       SET full_name = ?, bio = ?, twitter = ?, instagram = ?, website = ?
-       WHERE id = ?`,
-      [full_name, bio, twitter, instagram, website, req.user.id]
+    await User.update(
+      { full_name, bio, twitter, instagram, website },
+      { where: { id: req.user.id } }
     );
 
     res.json({ message: "Profile updated successfully" });
@@ -236,39 +219,17 @@ app.put("/api/user/profile", authMiddleware, async (req, res) => {
   }
 });
 
-
-
-// app.get("/api/user/wallet-status", authMiddleware, async (req, res) => {
-//   try {
-//     const [rows] = await db.query(
-//       "SELECT wallet_address FROM users WHERE id = ?",
-//       [req.user.id]
-//     );
-
-//     if (rows.length === 0)
-//       return res.status(404).json({ message: "User not found" });
-
-//     const wallet = rows[0].wallet_address;
-
-//     res.json({
-//       wallet_address: wallet,
-//       connected: !!wallet
-//     });
-//   } catch (err) {
-//     console.error("Wallet status error:", err);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// });
-
-
-
-
-
-
-
-
-
-
-app.listen(PORT, () =>
-  console.log(`Server running on port ${PORT}`)
-);
+// -------------------------
+// START SERVER & SYNC DB
+// -------------------------
+sequelize
+  .sync()
+  .then(() => {
+    console.log("Database synced");
+    app.listen(PORT, () =>
+      console.log(`Server running on port ${PORT}`)
+    );
+  })
+  .catch((err) => {
+    console.error("DB Sync Error:", err);
+  });
