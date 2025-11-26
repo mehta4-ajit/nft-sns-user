@@ -161,6 +161,35 @@ export default function ProfileSettings() {
     navigate("/login");
   };
 
+  /// -------------------------
+// DISCONNECT WALLET
+// -------------------------
+const handleDisconnectWallet = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/wallet/disconnect`, {
+      method: "PATCH",
+      headers: authHeaders(false),
+    });
+
+    if (!res.ok) {
+      fireAlert("failedDisconnect");
+      return;
+    }
+
+    // Remove active wallet from state
+    setProfile((prev) => ({
+      ...prev,
+      UserWallets: prev.UserWallets.map(w => ({ ...w, is_active: false })), // mark all wallets inactive
+    }));
+
+    fireAlert("walletDisconnected");
+  } catch (err) {
+    console.error("Disconnect wallet error:", err);
+    fireAlert("failedDisconnect");
+  }
+};
+
+
   if (loading) return <div className="text-white p-6">Loading profile...</div>;
 
   // ---------- UI ----------
@@ -238,36 +267,42 @@ export default function ProfileSettings() {
                 Wallet
               </h3>
 
-              {/* If wallet exists */}
-              {profile.UserWallets && profile.UserWallets.length > 0 ? (
-                <>
-                  <p className="text-sm text-gray-300">Connected Wallet:</p>
+              {(() => {
+                // Find active wallet
+                const activeWallet = profile.UserWallets?.find(w => w.is_active);
 
-                  <p className="text-sm font-mono text-cyan-400 break-all">
-                    {profile.UserWallets[0].address}
-                  </p>
-
-                  <button
-                    onClick={() => navigate("/wallets")}
-                    className="w-full mt-3 px-4 py-2 rounded-md border border-red-500 text-red-500 font-semibold hover:bg-red-500/10"
-                  >
-                    Disconnect Wallet
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-gray-300">No wallet connected</p>
-
-                  <button
-                    onClick={() => navigate("/wallets")}
-                    className="w-full mt-3 px-4 py-2 rounded-md bg-gradient-to-r from-[#24CBF5] to-[#9952E0] text-black font-semibold"
-                  >
-                    Connect Wallet
-                  </button>
-                </>
-              )}
+                if (activeWallet) {
+                  // Wallet is connected
+                  return (
+                    <>
+                      <p className="text-sm text-gray-300">Connected Wallet:</p>
+                      <p className="text-sm font-mono text-cyan-400 break-all">
+                        {activeWallet.address}
+                      </p>
+                      <button
+                        onClick={handleDisconnectWallet}
+                        className="w-full mt-3 px-4 py-2 rounded-md border border-red-500 text-red-500 font-semibold hover:bg-red-500/10"
+                      >
+                        Disconnect Wallet
+                      </button>
+                    </>
+                  );
+                } else {
+                  // No wallet connected
+                  return (
+                    <>
+                      <p className="text-sm text-gray-300">No wallet connected</p>
+                      <button
+                        onClick={() => navigate("/wallets")}
+                        className="w-full mt-3 px-4 py-2 rounded-md bg-gradient-to-r from-[#24CBF5] to-[#9952E0] text-black font-semibold"
+                      >
+                        Connect Wallet
+                      </button>
+                    </>
+                  );
+                }
+              })()}
             </div>
-
 
             {/* Social Distribution */}
             <div className="bg-[#13131680] rounded-xl p-5 sm:p-6 space-y-3 shadow-md border border-[#18181B]">
@@ -357,19 +392,27 @@ export default function ProfileSettings() {
       {/* Alert Box */}
       {alert && (
         <AnimatedAlert
-          type={alert.type === "success" || alert === "profileSaved" ? "success" : "error"}
+          type={
+            alert === "profileSaved" || alert === "walletDisconnected"
+              ? "success"
+              : "error"
+          }
           message={
-            alert.message ||
-            (alert === "profileSaved"
+            alert === "profileSaved"
               ? "Your profile changes have been saved."
-              : alert === "failedFetch"
-                ? "Could not load profile. Refresh or try later."
-                : alert === "failedSave"
-                  ? "Could not save changes. Try again."
-                  : "Something went wrong.")
+              : alert === "walletDisconnected"
+                ? "Wallet disconnected successfully."
+                : alert === "failedFetch"
+                  ? "Could not load profile. Refresh or try later."
+                  : alert === "failedSave"
+                    ? "Could not save changes. Try again."
+                    : alert === "failedDisconnect"
+                      ? "Could not disconnect wallet. Try again."
+                      : "Something went wrong."
           }
           onClose={() => setAlert(null)}
         />
+
       )}
 
     </div>

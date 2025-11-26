@@ -116,60 +116,50 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-/// -------------------------
-// CONNECT / ADD WALLET
+// Wallet Connect
 
 app.post("/api/wallet/add", authMiddleware, async (req, res) => {
   try {
     const { address } = req.body;
-    if (!address)
-      return res.status(400).json({ message: "Wallet address is required" });
+    if (!address) return res.status(400).json({ message: "Wallet address required" });
 
-    // 1. Check if wallet address is already used by ANY user
-    const addressTaken = await UserWallet.findOne({ where: { address } });
-    if (addressTaken) {
-      return res.status(400).json({
-        message: "This wallet is already linked to another user",
-      });
+    // Check if wallet exists for ANY user
+    const walletTaken = await UserWallet.findOne({ where: { address } });
+    if (walletTaken && walletTaken.user_id !== req.user.id) {
+      return res.status(400).json({ message: "This wallet is linked to another user" });
     }
 
-    // 2. Check if same user has already linked this address
-    const exists = await UserWallet.findOne({
+    // Check if same user has this wallet already
+    let userWallet = await UserWallet.findOne({
       where: { user_id: req.user.id, address },
     });
-    if (exists)
-      return res.status(400).json({ message: "Wallet already linked" });
 
-    // 3. Create wallet
-    let wallet;
-    try {
-      wallet = await UserWallet.create({
+    if (userWallet) {
+      // Just reactivate it
+      userWallet.is_active = true;
+      await userWallet.save();
+    } else {
+      // Create a new wallet record
+      userWallet = await UserWallet.create({
         user_id: req.user.id,
         address,
         is_active: true,
       });
-    } catch (err) {
-      if (err.name === "SequelizeUniqueConstraintError") {
-        return res.status(400).json({
-          message: "This wallet is already linked to another user",
-        });
-      }
-      console.error(err);
-      return res.status(500).json({ message: "Internal server error" });
     }
 
-    // 4. Set all other wallets to inactive
+    // Set all other wallets of this user to inactive
     await UserWallet.update(
       { is_active: false },
-      { where: { user_id: req.user.id, id: { [Op.ne]: wallet.id } } }
+      { where: { user_id: req.user.id, id: { [Op.ne]: userWallet.id } } }
     );
 
-    res.json({ message: "Wallet linked successfully", wallet });
+    res.json({ message: "Wallet linked successfully", wallet: userWallet });
   } catch (err) {
-    console.error("Add wallet error:", err);
+    console.error(err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 
 // -------------------------
