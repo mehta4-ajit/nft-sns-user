@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { Wallet, ArrowRight, X } from "lucide-react";
+import { Wallet, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import AnimatedAlert from "./Alertanimated";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [alert, setAlert] = useState(null); // SAME ALERT SYSTEM
+  const [alert, setAlert] = useState(null);
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,7 +38,11 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Store token and user info
         localStorage.setItem("token", data.token);
+        localStorage.setItem("user_id", data.user_id);
+        localStorage.setItem("wallet_connected", data.wallet_connected);
+        localStorage.setItem("wallet_address", data.active_wallet?.address || "");
 
         // Show success alert
         setAlert({ type: "success", message: "Login successful!" });

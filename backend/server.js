@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const { Op } = require("sequelize");
+require("dotenv").config(); 
 
 const sequelize = require("./sequelize");
 const User = require("./User");
@@ -12,8 +13,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 5000;
-const JWT_SECRET = "your_jwt_secret_here";
+
+const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // -------------------------
 // JWT
@@ -99,22 +101,25 @@ app.post("/api/auth/login", async (req, res) => {
 
     const token = generateToken(user);
 
-    // Check if user has any active wallet
+    // Fetch the active wallet only
     const activeWallet = await UserWallet.findOne({
-      where: { user_id: user.id, is_active: true },
+      where: { user_id: user.id, is_active: true }, // or userId / isActive depending on model
+      attributes: ["id", "address", "is_active"],
     });
 
     res.json({
       message: "Login successful",
       user_id: user.id,
-      wallet_connected: !!activeWallet,
       token,
+      active_wallet: activeWallet || null,
+      wallet_connected: !!activeWallet,
     });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 // Wallet Connect
 
@@ -179,22 +184,6 @@ app.patch("/api/wallet/disconnect", authMiddleware, async (req, res) => {
   }
 });
 
-// // -------------------------
-// // LIST ALL WALLETS
-// // -------------------------
-// app.get("/api/wallet/list", authMiddleware, async (req, res) => {
-//   try {
-//     const wallets = await UserWallet.findAll({
-//       where: { user_id: req.user.id },
-//       attributes: ["id", "address", "is_active"],
-//     });
-
-//     res.json({ wallets });
-//   } catch (err) {
-//     console.error("List wallet error:", err);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// });
 
 // -------------------------
 // GET USER PROFILE
