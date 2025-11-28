@@ -165,8 +165,6 @@ app.post("/api/wallet/add", authMiddleware, async (req, res) => {
   }
 });
 
-
-
 // -------------------------
 // DISCONNECT ACTIVE WALLET
 // -------------------------

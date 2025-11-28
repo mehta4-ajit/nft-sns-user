@@ -153,13 +153,11 @@ export default function ProfileSettings() {
     }
   };
 
-  // -------------------------
-  // LOGOUT
-  // -------------------------
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
+  localStorage.clear();
+  navigate("/login");
+};
+
 
   /// -------------------------
 // DISCONNECT WALLET

@@ -11,6 +11,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<RegisterPage />} />
+        <Route path = "/register" element={<RegisterPage/>}/>
         <Route path="/login" element={<Login />} />
         <Route path="/wallets" element={<Wallets />} />
         <Route path="/profile" element={<ProfileSettings />} />
@@ -28,5 +29,6 @@ function App() {
     </Router>
   );
 }
+
 
 export default App;

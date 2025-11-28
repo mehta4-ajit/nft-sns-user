@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { Wallet, ArrowRight, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import AnimatedAlert from "./Alertanimated";
@@ -13,6 +13,15 @@ export default function RegisterPage() {
     confirmPassword: "",
     role: "",
   });
+
+   useEffect(() => {
+  setForm({
+    full_name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+}, []);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

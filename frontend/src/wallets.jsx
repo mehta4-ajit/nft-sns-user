@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { ethers } from "ethers";
 import { Wallet, ArrowLeft, X } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -9,7 +9,6 @@ import coinbaseIcon from "../public/stuit.png";
 import tickIcon from "../public/check Icon.png";
 
 import WalletConnectProvider from "@walletconnect/ethereum-provider";
-import CoinbaseWalletSDK from "@coinbase/wallet-sdk";
 
 export default function Wallets() {
   const [isConnected, setIsConnected] = useState(false);
@@ -20,17 +19,17 @@ export default function Wallets() {
   const [chainId, setChainId] = useState(null);
   const [alert, setAlert] = useState(null);
 
-  // ----------------------------
+  // --------------------------------------------------
   // GET ETHERS PROVIDER
-  // ----------------------------
+  // --------------------------------------------------
   const getProvider = (externalProvider) => {
     if (!externalProvider) return null;
     return new ethers.BrowserProvider(externalProvider);
   };
 
-  // ----------------------------
+  // --------------------------------------------------
   // LOAD ACCOUNT DATA
-  // ----------------------------
+  // --------------------------------------------------
   const loadAccountData = useCallback(async (acct, provider) => {
     try {
       if (!provider) return;
@@ -46,9 +45,9 @@ export default function Wallets() {
     }
   }, []);
 
-  // ----------------------------
+  // --------------------------------------------------
   // REGISTER WALLET IN BACKEND
-  // ----------------------------
+  // --------------------------------------------------
   const registerWalletBackend = async (address) => {
     try {
       const token = localStorage.getItem("token");
@@ -56,7 +55,7 @@ export default function Wallets() {
 
       const res = await fetch("http://localhost:5000/api/wallet/add", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
@@ -74,61 +73,127 @@ export default function Wallets() {
     }
   };
 
-  // ----------------------------
+  // --------------------------------------------------
   // DISCONNECT WALLET
-  // ----------------------------
-  const disconnectWallet = () => {
-    setSelectedWallet(null);
-    setIsConnected(false);
-    setWalletAddress("");
-    setBalance(null);
-    setNetwork("");
-    setChainId(null);
-    setAlert("disconnected");
+  // --------------------------------------------------
+  const disconnectWallet = async (silent = false) => {
+  if (window.wcProvider?.disconnect) await window.wcProvider.disconnect();
+
+  setSelectedWallet(null);
+  setIsConnected(false);
+  setWalletAddress("");
+  setBalance(null);
+  setNetwork("");
+  setChainId(null);
+
+  if (!silent) setAlert("disconnected");
+};
+
+  
+  // -------------------------
+  // USE EFFECT
+  // -------------------------
+  useEffect(() => {
+    const { metaMask, coinbase } = detectInjectedWallets();
+
+    console.log("MetaMask Installed:", !!metaMask);
+    console.log("Coinbase Installed:", !!coinbase);
+  }, []);
+
+  // --------------------------------------------------
+  // EXTENSION DETECTION (VERY IMPORTANT)
+  // --------------------------------------------------
+  const detectInjectedWallets = () => {
+    const { ethereum } = window;
+    let metaMask = null;
+    let coinbase = null;
+
+    if (!ethereum) return { metaMask, coinbase };
+
+    // Multi-provider injection (MetaMask + Coinbase)
+    if (ethereum.providers?.length) {
+      ethereum.providers.forEach((p) => {
+        if (p.isMetaMask) metaMask = p;
+        if (p.isCoinbaseWallet) coinbase = p;
+      });
+    }
+
+    // Single provider fallback
+    if (ethereum.isMetaMask) metaMask = ethereum;
+    if (ethereum.isCoinbaseWallet) coinbase = ethereum;
+
+    return { metaMask, coinbase };
   };
 
-  // ----------------------------
-  // CONNECT METAMASK
-  // ----------------------------
+  // --------------------------------------------------
+  // CONNECT METAMASK (EXTENSION)
+  // --------------------------------------------------
   const connectMetaMask = async () => {
     try {
-      if (!window.ethereum) throw new Error("Please install MetaMask.");
+      const { metaMask } = detectInjectedWallets();
+      if (!metaMask) throw new Error("Please install MetaMask extension.");
 
-      await window.ethereum.request({
-        method: "wallet_requestPermissions",
-        params: [{ eth_accounts: {} }],
-      });
-
-      const accounts = await window.ethereum.request({
+      const accounts = await metaMask.request({
         method: "eth_requestAccounts",
       });
 
       const address = accounts[0];
       setWalletAddress(address);
 
-      const provider = getProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider(metaMask);
+
       await loadAccountData(address, provider);
       await registerWalletBackend(address);
 
+      setSelectedWallet("MetaMask");
+      setIsConnected(true);
     } catch (err) {
-      console.error(err);
       setAlert("error: " + err.message);
     }
   };
 
-  // ----------------------------
+  // --------------------------------------------------
+  // CONNECT COINBASE (EXTENSION)
+  // --------------------------------------------------
+  const connectCoinbase = async () => {
+    try {
+      const { coinbase } = detectInjectedWallets();
+      if (!coinbase) throw new Error("Please install Coinbase Wallet extension.");
+
+      const accounts = await coinbase.request({
+        method: "eth_requestAccounts",
+      });
+
+      const address = accounts[0];
+      setWalletAddress(address);
+
+      const provider = new ethers.BrowserProvider(coinbase);
+
+      await loadAccountData(address, provider);
+      await registerWalletBackend(address);
+
+      setSelectedWallet("Coinbase");
+      setIsConnected(true);
+    } catch (err) {
+      setAlert("error: " + err.message);
+    }
+  };
+
+  // --------------------------------------------------
   // CONNECT WALLETCONNECT
-  // ----------------------------
+  // --------------------------------------------------
   const connectWalletConnect = async () => {
     try {
       if (window.wcProvider?.disconnect) await window.wcProvider.disconnect();
 
       const wcProvider = await WalletConnectProvider.init({
-        projectId: "YOUR_PROJECT_ID",
+        projectId: "31e35412b28df048fca658f48c492f62",
         chains: [1],
+        showQrModal: true,
       });
 
       window.wcProvider = wcProvider;
+
       await wcProvider.enable();
 
       const provider = getProvider(wcProvider);
@@ -136,66 +201,40 @@ export default function Wallets() {
       const address = await signer.getAddress();
 
       setWalletAddress(address);
+      setSelectedWallet("WalletConnect");
+
       await loadAccountData(address, provider);
       await registerWalletBackend(address);
 
     } catch (err) {
-      console.error(err);
       setAlert("error: " + err.message);
     }
   };
 
-  // ----------------------------
-  // CONNECT COINBASE
-  // ----------------------------
-  const connectCoinbase = async () => {
-    try {
-      const coinbase = new CoinbaseWalletSDK({
-        appName: "Your App Name",
-        appLogoUrl: "https://yourwebsite.com/logo.png",
-      });
+  // --------------------------------------------------
+  // WALLET SELECT HANDLER
+  // --------------------------------------------------
+  const handleWalletSelect = async (wallet) => {
+  await disconnectWallet(true); // <-- NO ALERT
+  setSelectedWallet(wallet);
 
-      const provider = coinbase.makeWeb3Provider(
-        "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
-        1
-      );
+  if (wallet === "MetaMask") connectMetaMask();
+  else if (wallet === "Coinbase") connectCoinbase();
+  else if (wallet === "WalletConnect") connectWalletConnect();
+};
 
-      await provider.request({ method: "eth_requestAccounts" });
 
-      const ethersProvider = getProvider(provider);
-      const signer = await ethersProvider.getSigner();
-      const address = await signer.getAddress();
-
-      setWalletAddress(address);
-      await loadAccountData(address, ethersProvider);
-      await registerWalletBackend(address);
-
-    } catch (err) {
-      console.error(err);
-      setAlert("error: " + err.message);
-    }
-  };
-
-  // ----------------------------
-  // HANDLE WALLET SELECT
-  // ----------------------------
-  const handleWalletSelect = (wallet) => {
-    disconnectWallet(); // reset previous wallet
-    setSelectedWallet(wallet);
-
-    if (wallet === "MetaMask") connectMetaMask();
-    else if (wallet === "WalletConnect") connectWalletConnect();
-    else if (wallet === "Coinbase") connectCoinbase();
-  };
-
-  // ======================================================
+  // --------------------------------------------------
   // UI
-  // ======================================================
+  // --------------------------------------------------
   return (
     <div className="relative min-h-screen bg-black flex flex-col items-center justify-center px-4 py-10 text-white">
 
       {/* Back Button */}
-      <Link to="/" className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-cyan-400">
+      <Link
+        to="/"
+        className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-cyan-400"
+      >
         <ArrowLeft className="w-5 h-5" />
         <span className="hidden sm:inline text-sm">Back</span>
       </Link>
@@ -207,7 +246,9 @@ export default function Wallets() {
         </div>
       </div>
 
-      <h1 className="text-2xl sm:text-3xl font-bold mb-2">Connect Your Wallet</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-2">
+        Connect Your Wallet
+      </h1>
       <p className="text-gray-400 mb-8">Choose your preferred wallet</p>
 
       <form className="relative w-full max-w-lg bg-black rounded-2xl p-6 sm:p-8 border border-[#18181B] shadow-xl">
@@ -215,7 +256,11 @@ export default function Wallets() {
         {/* STATUS */}
         <div className="mb-6">
           <label className="block text-sm mb-2 text-gray-300">Wallet Status</label>
-          <div className={`p-3 rounded-md text-sm border bg-[#09090B4D] ${isConnected ? "border-cyan-500" : "border-[#18181B]"}`}>
+          <div
+            className={`p-3 rounded-md text-sm border bg-[#09090B4D] ${
+              isConnected ? "border-cyan-500" : "border-[#18181B]"
+            }`}
+          >
             {!isConnected ? (
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
@@ -230,7 +275,9 @@ export default function Wallets() {
                 <div>{balance} ETH</div>
 
                 <div className="text-gray-400 text-xs mt-2">Network</div>
-                <div>{network} (Chain ID: {chainId})</div>
+                <div>
+                  {network} (Chain ID: {chainId})
+                </div>
               </div>
             )}
           </div>
@@ -242,7 +289,7 @@ export default function Wallets() {
             { name: "MetaMask", icon: metamask },
             { name: "WalletConnect", icon: walletconnectIcon },
             { name: "Coinbase", icon: coinbaseIcon },
-          ].map(wallet => (
+          ].map((wallet) => (
             <div
               key={wallet.name}
               onClick={() => handleWalletSelect(wallet.name)}

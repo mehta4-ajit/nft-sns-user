@@ -1,14 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Wallet, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import AnimatedAlert from "./Alertanimated";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [alert, setAlert] = useState(null);
-  const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [alert, setAlert] = useState(null);
+  const [form, setForm] = useState({ email: "", password: "" });
+
+  useEffect(() => {
+    setForm({ email: "", password: "" });
+  }, []);
+
 
   // Handle input changes
   const handleChange = (e) => {
@@ -61,6 +66,9 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+
+
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 text-white relative">
