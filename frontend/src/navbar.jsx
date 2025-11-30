@@ -6,8 +6,12 @@ import { FiChevronDown, FiMenu, FiX } from "react-icons/fi";
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeLink, setActiveLink] = useState("");
+  const [walletInfo, setWalletInfo] = useState({
+    address: "",
+    balance: null,
+  });
+  const [profileImage, setProfileImage] = useState("/avatar 1.png"); // default avatar
 
-  // Define all navbar links
   const links = [
     { name: "Feed", href: "/feed" },
     { name: "Upload", href: "/uploadnft" },
@@ -16,31 +20,62 @@ export default function Navbar() {
     { name: "Leaderboards", href: "/leaderboards" },
   ];
 
-  // Automatically set the active link based on current URL
   useEffect(() => {
     const currentPath = window.location.pathname;
     const current = links.find((link) => link.href === currentPath);
     setActiveLink(current ? current.name : "Feed");
   }, [window.location.pathname]);
 
+  // -------------------------
+  // FETCH PROFILE & WALLET INFO
+  // -------------------------
+  const fetchProfileInfo = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch("http://localhost:5000/api/user/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      // Set profile image if exists
+      if (data.profile.profileImage) {
+        setProfileImage(data.profile.profileImage);
+      }
+
+      // Set active wallet info
+      const activeWallet = data.profile.UserWallets?.find((w) => w.is_active);
+      if (activeWallet) {
+        setWalletInfo({
+          address: activeWallet.address,
+          balance: activeWallet.balance ?? 0,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile info:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfileInfo();
+  }, []);
+
   return (
     <nav className="bg-[#0b0b0b] text-white shadow-md sticky top-0 z-50">
       <div className="flex flex-wrap justify-between items-center w-full px-4 sm:px-6 lg:px-8 py-3">
-        {/* LEFT SECTION: Logo + Links */}
+        {/* LEFT SECTION */}
         <div className="flex items-center space-x-8">
-          {/* Logo + Tagline */}
           <div className="flex items-center space-x-3 cursor-pointer">
-            <img
-              src="/logo (2).png"
-              alt="Logo"
-              className="h-12 w-12 sm:h-14 sm:w-14"
-            />
-            <span className="text-xl sm:text-2xl font-bold text-white glow">
-              MINTIOLAB
-            </span>
+            <img src="/logo (2).png" alt="Logo" className="h-12 w-12 sm:h-14 sm:w-14" />
+            <span className="text-xl sm:text-2xl font-bold text-white glow">MINTIOLAB</span>
           </div>
 
-          {/* Desktop Links */}
           <div className="hidden md:flex items-center space-x-8 text-gray-300 ml-6">
             {links.map((link) => (
               <a
@@ -62,7 +97,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* RIGHT SECTION: Socials + Wallet + Profile */}
+        {/* RIGHT SECTION */}
         <div className="hidden md:flex items-center space-x-6">
           {/* Social Icons */}
           <div className="flex items-center border border-gray-700 rounded-2xl px-2.5 py-1.5">
@@ -81,27 +116,31 @@ export default function Navbar() {
           </div>
 
           {/* Wallet */}
-          <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-2">
-            <MdAccountBalanceWallet className="text-cyan-400 mr-2" />
-            <span className="text-white font-semibold text-sm">0.45 ETH</span>
-            <span className="text-gray-500 mx-2">|</span>
-            <span className="text-gray-400 text-sm">0xA2f...9C3</span>
-          </div>
+          {walletInfo.address ? (
+            <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-2">
+              <MdAccountBalanceWallet className="text-cyan-400 mr-2" />
+              <span className="text-white font-semibold text-sm">{walletInfo.balance} ETH</span>
+              <span className="text-gray-500 mx-2">|</span>
+              <span className="text-gray-400 text-sm">
+                {walletInfo.address.slice(0, 6)}...{walletInfo.address.slice(-4)}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-2 text-gray-400">
+              <MdAccountBalanceWallet className="text-gray-400 mr-2" />
+              Not connected
+            </div>
+          )}
 
           {/* Profile */}
           <div className="flex items-center cursor-pointer group">
             <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-700">
-              <img
-                src="/avatar 1.png"
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
+              <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
             </div>
             <FiChevronDown className="ml-1 text-gray-400 group-hover:text-white transition" />
           </div>
         </div>
 
-        {/* MOBILE MENU BUTTON */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           className="md:hidden text-gray-300 focus:outline-none"
@@ -153,22 +192,27 @@ export default function Navbar() {
               </a>
             </div>
 
-            {/* Wallet */}
-            <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-4 mt-4">
-              <MdAccountBalanceWallet className="text-cyan-400 mr-2" />
-              <span className="text-white font-semibold text-sm">0.45 ETH</span>
-              <span className="text-gray-500 mx-2">|</span>
-              <span className="text-gray-400 text-sm">0xA2f...9C3</span>
-            </div>
+            {/* Mobile Wallet */}
+            {walletInfo.address ? (
+              <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-4 mt-4">
+                <MdAccountBalanceWallet className="text-cyan-400 mr-2" />
+                <span className="text-white font-semibold text-sm">{walletInfo.balance} ETH</span>
+                <span className="text-gray-500 mx-2">|</span>
+                <span className="text-gray-400 text-sm">
+                  {walletInfo.address.slice(0, 6)}...{walletInfo.address.slice(-4)}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-4 mt-4 text-gray-400">
+                <MdAccountBalanceWallet className="text-gray-400 mr-2" />
+                Not connected
+              </div>
+            )}
 
             {/* Profile */}
             <div className="flex items-center space-x-2 mt-4">
               <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-700">
-                <img
-                  src="/avatar 1.png"
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
+                <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
               </div>
               <span className="text-white font-medium">Creator</span>
             </div>

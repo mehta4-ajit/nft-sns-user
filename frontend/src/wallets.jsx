@@ -60,7 +60,10 @@ export default function Wallets() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({
+          address,
+          balance: parseFloat(balance), // <-- send balance
+        }),
       });
 
       const data = await res.json();
@@ -281,24 +284,32 @@ export default function Wallets() {
           ].map((wallet) => (
             <div
               key={wallet.name}
-              onClick={() => handleWalletSelect(wallet.name)}
-              className={`flex items-center gap-4 p-4 rounded-md cursor-pointer border-2 transition-all bg-[#09090B4D] ${selectedWallet === wallet.name ? "border-cyan-500 shadow-lg" : "border-[#18181B] hover:border-cyan-500"}`}
+              onClick={() => wallet.name === "MetaMask" && handleWalletSelect(wallet.name)}
+              className={`flex items-center gap-4 p-4 rounded-md border-2 transition-all
+    bg-[#09090B4D] 
+    ${selectedWallet === wallet.name ? "border-cyan-500 shadow-lg" : "border-[#18181B]"} 
+    ${wallet.name !== "MetaMask" ? "opacity-50 cursor-not-allowed" : "hover:border-cyan-500 cursor-pointer"}`}
             >
               <img src={wallet.icon} className="w-8 h-8" />
               <div className="flex-1">
                 <h3 className="font-semibold">{wallet.name}</h3>
-                <p className="text-gray-400 text-sm">{wallet.name} connect</p>
+                <p className="text-gray-400 text-sm">
+                  {wallet.name === "MetaMask" ? `${wallet.name} connect` : "Not available"}
+                </p>
               </div>
-              {selectedWallet === wallet.name && <img src={tickIcon} className="w-4 h-4" />}
+              {selectedWallet === wallet.name && wallet.name === "MetaMask" && (
+                <img src={tickIcon} className="w-4 h-4" />
+              )}
             </div>
+
           ))}
         </div>
 
         {!isConnected ? (
           <div className="flex justify-center">
-            <Link to="/login" className="text-gray-300 hover:text-cyan-400">
+            <Link to="/profile" className="text-gray-300 hover:text-cyan-400">
               <ArrowLeft className="inline w-5 h-5 mr-1" />
-              Back to Login
+              Back to Profile
             </Link>
           </div>
         ) : (
@@ -307,8 +318,12 @@ export default function Wallets() {
               Disconnect Wallet
             </button>
 
-            <Link to="/profile" className="w-full sm:w-1/2 bg-gradient-to-r from-[#24CBF5] to-[#9952E0] text-black text-center py-2.5 rounded-md">
+            <Link
+              to="/profile"
+              className="w-full sm:w-1/2 bg-gradient-to-r from-[#24CBF5] to-[#9952E0] text-black text-center py-2.5 rounded-md flex items-center justify-center gap-2"
+            >
               Continue to Profile
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         )}

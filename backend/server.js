@@ -258,7 +258,7 @@ app.post("/api/auth/login", async (req, res) => {
 
 app.post("/api/wallet/add", authMiddleware, async (req, res) => {
   try {
-    const { address } = req.body;
+    const { address, balance } = req.body;
     if (!address) return res.status(400).json({ message: "Wallet address required" });
 
     // Check if wallet exists for ANY user
@@ -273,14 +273,16 @@ app.post("/api/wallet/add", authMiddleware, async (req, res) => {
     });
 
     if (userWallet) {
-      // Just reactivate it
+      // Reactivate it and update info
       userWallet.is_active = true;
+      userWallet.balance = balance;
       await userWallet.save();
     } else {
       // Create a new wallet record
       userWallet = await UserWallet.create({
         user_id: req.user.id,
         address,
+        balance,
         is_active: true,
       });
     }
@@ -319,9 +321,13 @@ app.patch("/api/wallet/disconnect", authMiddleware, async (req, res) => {
 // -------------------------
 // GET USER PROFILE
 // -------------------------
+// -------------------------
+// GET USER PROFILE (WITH WALLET BALANCE)
+// -------------------------
 app.get("/api/user/profile", authMiddleware, async (req, res) => {
   try {
-    console.log('[GET /api/user/profile] req.user:', req.user); // <--- add
+    console.log('[GET /api/user/profile] req.user:', req.user);
+
     const user = await User.findByPk(req.user.id, {
       attributes: [
         "id",
@@ -335,21 +341,25 @@ app.get("/api/user/profile", authMiddleware, async (req, res) => {
       include: [
         {
           model: UserWallet,
-          attributes: ["id", "address", "is_active"],
+          attributes: ["id", "address", "is_active", "balance"], // <- added balance
         },
       ],
     });
 
-    console.log('[GET /api/user/profile] found user:', !!user); // <--- add
-
+    console.log('[GET /api/user/profile] found user:', !!user);
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Prefix profileImage with server URL if it exists
     let profile = user.toJSON();
+
+    // Prefix profileImage with server URL if it exists
     if (profile.profileImage) {
       profile.profileImage = `${req.protocol}://${req.get("host")}${profile.profileImage}`;
     }
+
+    // Optional: only return the active wallet info
+    const activeWallet = profile.UserWallets?.find(w => w.is_active) || null;
+    profile.activeWallet = activeWallet;
 
     res.json({ profile });
   } catch (err) {

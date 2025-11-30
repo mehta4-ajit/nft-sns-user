@@ -5,6 +5,10 @@ const User = require("./User");
 const UserWallet = sequelize.define("UserWallet", {
   address: { type: DataTypes.STRING, allowNull: false },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: false },
+  balance: {
+  type: DataTypes.DECIMAL(18, 8),
+  defaultValue: 0,
+}
 }, {
   tableName: "user_wallets",
   timestamps: true,

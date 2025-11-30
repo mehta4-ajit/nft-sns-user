@@ -107,7 +107,7 @@ export default function RegisterPage() {
 
           {/* Full Name */}
           <div className="mb-4">
-            <label className="block text-sm text-white mb-1.5">Full Name</label>
+            <label className="block text-sm text-white mb-1.5">Full Name <span className="text-cyan-500">*</span> </label>
             <input
               type="text"
               name="full_name"
@@ -122,7 +122,7 @@ export default function RegisterPage() {
 
           {/* Email */}
           <div className="mb-4">
-            <label className="block text-sm text-white mb-1.5">Email</label>
+            <label className="block text-sm text-white mb-1.5">Email <span className="text-cyan-500">*</span></label>
             <input
               type="email"
               name="email"
@@ -137,7 +137,7 @@ export default function RegisterPage() {
 
           {/* Password */}
           <div className="mb-4 relative">
-            <label className="block text-sm text-white mb-1.5">Password</label>
+            <label className="block text-sm text-white mb-1.5">Password <span className="text-cyan-500">*</span></label>
 
             <input
               type={showPassword ? "text" : "password"}
@@ -161,7 +161,7 @@ export default function RegisterPage() {
 
           {/* Confirm Password */}
           <div className="mb-4 relative">
-            <label className="block text-sm text-white mb-1.5">Confirm Password</label>
+            <label className="block text-sm text-white mb-1.5">Confirm Password <span className="text-cyan-500">*</span></label>
 
             <input
               type={showConfirmPassword ? "text" : "password"}
@@ -184,7 +184,7 @@ export default function RegisterPage() {
 
 
           <div className="mb-6">
-            <label className="block text-sm text-white mb-1.5">Role</label>
+            <label className="block text-sm text-white mb-1.5">Role <span className="text-cyan-500">*</span></label>
 
             <CustomDropdown
               value={form.role}

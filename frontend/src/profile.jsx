@@ -1,6 +1,6 @@
 // ProfileSettings.jsx
 import React, { useEffect, useState } from "react";
-import { X, Save , Camera } from "lucide-react";
+import { X, Save, Camera } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./navbar.jsx";
 import AnimatedAlert from "./Alertanimated.jsx";
@@ -170,7 +170,10 @@ export default function ProfileSettings() {
 
       setPreviewImage(null); // clear preview
       setSelectedImage(null);
+
       fireAlert("profileSaved");
+
+      setTimeout(() => window.location.reload(), 600);
       setIsEditing(false);
     } catch (err) {
       console.error("Save profile error:", err);
@@ -199,7 +202,7 @@ export default function ProfileSettings() {
     setTimeout(() => {
       localStorage.clear(); // clear token after alert
       navigate("/login");
-    }, 1500); 
+    }, 1500);
   };
 
 
@@ -225,6 +228,8 @@ export default function ProfileSettings() {
       }));
 
       fireAlert("walletDisconnected");
+      setTimeout(() => window.location.reload(), 600);
+
     } catch (err) {
       console.error("Disconnect wallet error:", err);
       fireAlert("failedDisconnect");
