@@ -16,6 +16,7 @@
     "@walletconnect/ethereum-provider": "^2.23.0",
     "axios": "^1.13.2",
     "ethers": "^6.15.0",
+    "jwt-decode": "^4.0.0",
     "lucide-react": "^0.552.0",
     "nodemailer": "^7.0.11",
     "react": "^19.1.1",

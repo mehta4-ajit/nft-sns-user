@@ -9,6 +9,10 @@ import Events from "./events.jsx";
 import UploadMintNFT from "./UploadNFT.jsx";
 import DistributionPage from "./distributioncomplete.jsx";
 import MyNFTsPage from "./mynft.jsx";
+import Dashboard from "./feed.jsx";
+import NFTDisplay from "./detailsnft.jsx";
+import ContestDetails from "./eventdetailpg.jsx";
+import SubmitEntryModal from "./participate.jsx";
 
 function App() {
   return (
