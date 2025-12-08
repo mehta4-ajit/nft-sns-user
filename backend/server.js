@@ -15,7 +15,7 @@ const { Op } = require("sequelize");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-
+const https = require("https");
 // MODELS
 const sequelize = require("./sequelize");
 const User = require("./User");
@@ -628,14 +628,21 @@ app.post("/api/update-item-metadata", authMiddleware, async (req, res) => {
 // ==========================
 // START SERVER
 // ==========================
+
+// SSL certificate files
+const options = {
+  key: fs.readFileSync("/etc/letsencrypt/live/api.mintio.shop/privkey.pem"),
+  cert: fs.readFileSync("/etc/letsencrypt/live/api.mintio.shop/fullchain.pem"),
+};
+
 sequelize
   .sync()
   .then(() => {
     console.log("Database synced");
 
-    // Start Express server
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    // Start HTTPS Express server
+    https.createServer(options, app).listen(PORT, () => {
+      console.log(`🔐 HTTPS Server running on port ${PORT}`);
 
       // Start cron jobs
       startSnsCron();
