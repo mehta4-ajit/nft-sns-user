@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
 // Import your ready components
 import ProfileSettings from "./profile.jsx";
 import Wallets from "./wallets.jsx";
@@ -16,15 +15,15 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<RegisterPage />} />
-        <Route path = "/register" element={<RegisterPage/>}/>
+        <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/wallets" element={<Wallets />} />
         <Route path="/profile" element={<ProfileSettings />} />
-        <Route path="/verify-email" element={<VerifyEmailPage/>}/>
-        <Route path="/events" element={<Events/>}/>
-        <Route path="/upload" element={<UploadMintNFT/>}/>
-        <Route path="/distribution" element={<DistributionPage/>}/>
-        <Route path="/mynft" element={<MyNFTsPage/>}/>
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/upload" element={<UploadMintNFT />} />
+        <Route path="/distribution" element={<DistributionPage />} />
+        <Route path="/mynft" element={<MyNFTsPage />} />
 
         {/* Optional: fallback for unknown routes */}
         <Route
@@ -39,6 +38,5 @@ function App() {
     </Router>
   );
 }
-
 
 export default App;
