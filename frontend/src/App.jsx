@@ -10,6 +10,10 @@ import Events from "./events.jsx";
 import UploadMintNFT from "./UploadNFT.jsx";
 import DistributionPage from "./distributioncomplete.jsx";
 import MyNFTsPage from "./mynft.jsx";
+import Dashboard from "./feed.jsx";
+import NFTDisplay from "./detailsnft.jsx";
+import ContestDetails from "./eventdetailpg.jsx";
+import SubmitEntryModal from "./participate.jsx";
 
 function App() {
   return (
@@ -25,7 +29,10 @@ function App() {
         <Route path="/upload" element={<UploadMintNFT/>}/>
         <Route path="/distribution" element={<DistributionPage/>}/>
         <Route path="/mynft" element={<MyNFTsPage/>}/>
-
+        <Route path="/feed" element={<Dashboard/>}/>
+        <Route path="/itemdetail/:id" element={<NFTDisplay/>} />
+        <Route path="/viewdetail/:id" element={<ContestDetails/>} />
+        
         {/* Optional: fallback for unknown routes */}
         <Route
           path="*"

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { BASE_URL } from "./config";
+import { useNavigate } from "react-router-dom";
+import Navbar from "./navbar";
 
 export default function Events() {
     const [activeTab, setActiveTab] = useState("Active");
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -71,6 +74,8 @@ export default function Events() {
     }, [activeTab, filteredEvents.length]);
 
     return (
+        <>
+        <Navbar/>
         <div className="min-h-screen bg-[#0d0d0d] text-white px-4 sm:px-8 py-8">
             {/* Header Section */}
             <div className="mb-7">
@@ -86,11 +91,10 @@ export default function Events() {
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-3 py-1.5 rounded-md transition ${
-                            activeTab === tab
-                                ? "bg-cyan-500 text-black font-semibold"
-                                : "text-gray-400 hover:text-white"
-                        }`}
+                        className={`px-3 py-1.5 rounded-md transition ${activeTab === tab
+                            ? "bg-cyan-500 text-black font-semibold"
+                            : "text-gray-400 hover:text-white"
+                            }`}
                     >
                         {tab}
                     </button>
@@ -115,14 +119,13 @@ export default function Events() {
                                     <img
                                         src={event.cover}
                                         alt={event.title}
-                                        className="w-full h-48 sm:h-56 object-cover object-[center_-50px]"
+                                        className="w-full h-48 sm:h-56 object-fit"
                                     />
                                     <span
-                                        className={`absolute top-3 right-3 flex items-center justify-center text-sm font-semibold px-4 rounded-full border ${
-                                            event.status === "Active"
-                                                ? "text-green-300 border-green-500 bg-green-500/20"
-                                                : "text-gray-400 border-gray-500 bg-gray-800/50"
-                                        }`}
+                                        className={`absolute top-3 right-3 flex items-center justify-center text-sm font-semibold pt-0.5 px-4 rounded-full border ${event.status === "Active"
+                                            ? "text-green-400 border-green-500 bg-green-500/20"
+                                            : "text-gray-400 border-gray-500 bg-gray-800/50"
+                                            }`}
                                     >
                                         {event.status}
                                     </span>
@@ -146,7 +149,10 @@ export default function Events() {
                                     {/* Buttons + Icons */}
                                     <div className="flex items-center justify-between mt-auto flex-wrap gap-3">
                                         <div className="flex flex-wrap gap-3">
-                                            <button className="bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-sm px-4 py-2 rounded-lg">
+                                            <button
+                                                onClick={() => navigate(`/viewdetail/${event.id}`)}
+                                                className="bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-sm px-4 py-2 rounded-lg"
+                                            >
                                                 View Details
                                             </button>
 
@@ -223,5 +229,6 @@ export default function Events() {
                 🎉 Winners will be auto-published via connected social accounts
             </div>
         </div>
+        </>
     );
 }
