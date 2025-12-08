@@ -1,4 +1,4 @@
 
 
 
-export const BASE_URL = "http://168.231.121.92:5000";
+export const BASE_URL = "https://api.mintio.shop:5000";
