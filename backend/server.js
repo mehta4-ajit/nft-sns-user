@@ -18,9 +18,7 @@ const fs = require("fs");
 const https = require("https");
 // MODELS
 const sequelize = require("./sequelize");
-const User = require("./User");
 const UserWallet = require("./UserWalle");
-const Item = require("./Item");
 const Event = require("./Event");
 const Settings = require("./Setting");
 const ItemSns = require("./ItemSns");
@@ -29,6 +27,8 @@ const Sns = require("./Sns");
 const { sendVerificationEmail } = require("./emailService");
 const SnsForm = require("./sns_form");
 
+// server.js
+const { Item, ItemNFT, User, EventParticipant } = require("./assoications");
 
 
 // EXPRESS APP
@@ -313,9 +313,8 @@ app.patch("/api/wallet/disconnect", authMiddleware, async (req, res) => {
   }
 });
 
-// ==========================
-// GET USER PROFILE
-// ==========================
+// Get profile 
+
 app.get("/api/user/profile", authMiddleware, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
@@ -327,6 +326,7 @@ app.get("/api/user/profile", authMiddleware, async (req, res) => {
         "instagram",
         "website",
         "profileImage",
+        "role" // ✅ ADD THIS
       ],
       include: [
         {
@@ -351,6 +351,7 @@ app.get("/api/user/profile", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 // ==========================
 // UPDATE PROFILE + IMAGE
@@ -474,7 +475,7 @@ app.post("/api/upload-item-file", authMiddleware, uploadItem.single("file"), asy
       name: req.body.title || req.file.originalname,
       description: req.body.description || null,
       url_storage: fileUrl,
-      url_thumbnail: null,
+      url_thumbnail: fileUrl,
       status: 0,
       event_id: req.body.event_id || null,     // still dynamic from frontend
     });
@@ -559,6 +560,8 @@ app.post("/api/item/sns/add", authMiddleware, async (req, res) => {
 // ==========================
 app.use("/uploads/profiles", express.static(path.join(__dirname, "uploads/profiles")));
 app.use("/uploads/items", express.static(path.join(__dirname, "uploads/items")));
+app.use("/uploads", express.static("uploads"));
+
 
 
 // GET all SNS form fields, optionally filter by sns_kind
@@ -624,6 +627,315 @@ app.post("/api/update-item-metadata", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Failed to update metadata" });
   }
 });
+
+
+// GET USER ITEMS + NFT DATA
+app.get("/api/user-items-nft", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { status, category, search } = req.query;
+
+    // Base conditions
+    const where = { user_id: userId };
+
+    // FILTER: status
+    if (status && status !== "All Status") {
+      where.status = status;
+    }
+
+    // FILTER: category
+    if (category && category !== "All Categories") {
+      where.category = category;
+    }
+
+    // SEARCH: name + tags
+    if (search && search.trim().length > 0) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { tags: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    const items = await Item.findAll({
+      where,
+      order: [["createdat", "DESC"]],
+      attributes: [
+        "id",
+        "name",
+        "url_storage",
+        "description",
+        "category",
+        "tags",
+        "royalty",
+        "status",
+        "event_id",
+        "createdat",
+        "updatedat",
+        "url_thumbnail"
+      ],
+      include: [
+        {
+          model: ItemNFT,
+          as: "nftData",
+          attributes: [
+            "status",
+            "status_message",
+            "token_id",
+            "contract_address",
+            "txhash",
+            "metadata_url"
+          ],
+          required: false, // LEFT JOIN
+        },
+      ],
+    });
+
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error("Fetch User Items Error:", err);
+    res.status(500).json({ error: "Failed to fetch user items" });
+  }
+});
+
+
+// FEED ROUTE — Get all creators + their items
+app.get("/api/feed/creators", async (req, res) => {
+  try {
+    const creators = await User.findAll({
+      where: { role: "creator" },
+
+      attributes: [
+        "id",
+        "full_name",
+        "profileImage",
+        "isVerified",
+        "bio"
+      ],
+
+      include: [
+        {
+          model: Item,
+          as: "items",
+          attributes: [
+            "id",
+            "name",
+            "description",
+            "url_thumbnail",
+            "createdAt"
+          ],
+        }
+      ],
+
+      order: [["createdAt", "DESC"]]
+    });
+
+
+    // map profileImage to full URL
+    const creatorsWithFullUrl = creators.map(c => {
+      return {
+        ...c.toJSON(),
+        profileImage: c.profileImage
+          ? `${req.protocol}://${req.get("host")}${c.profileImage}`
+          : null,
+      };
+    });
+
+    return res.json({ success: true, creators: creatorsWithFullUrl });
+  } catch (err) {
+    console.error("Feed creators error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+
+app.get("/api/item/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const item = await Item.findOne({
+      where: { id },
+      attributes: ["id", "name", "description", "url_thumbnail", "royalty", "tags"],
+
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "full_name", "profileImage", "isVerified"],
+        }
+      ],
+    });
+
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Item not found" });
+    }
+
+    const itemData = {
+      ...item.toJSON(),
+
+      url_thumbnail: item.url_thumbnail
+        ? `${req.protocol}://${req.get("host")}${item.url_thumbnail}`
+        : null,
+
+      user: item.user
+        ? {
+            ...item.user.toJSON(),
+            profileImage: item.user.profileImage
+              ? `${req.protocol}://${req.get("host")}${item.user.profileImage}`
+              : null,
+          }
+        : null,
+    };
+
+    return res.json({ success: true, item: itemData });
+
+  } catch (err) {
+    console.error("Error fetching item:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// ==========================
+// GET EVENT DETAIL (BY ID)
+// ==========================
+app.get("/api/events/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const event = await Event.findOne({
+      where: { id },
+      attributes: [
+        "id",
+        "title",
+        "join_start",
+        "join_end",
+        "status",
+        "url_image_big"
+      ]
+    });
+
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Format response exactly how your frontend expects
+    const response = {
+      id: event.id,
+      title: event.title,
+      startDate: event.join_start || "",
+      endDate: event.join_end || "",
+      status: event.status === 1 ? "Active" : "Closed",
+      cover: event.url_image_big || "/ms-4/imgwrapper.png"
+    };
+
+    return res.json({ event: response });
+  } catch (error) {
+    console.error("GET EVENT DETAIL ERROR:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+
+app.post("/api/events/:eventId/participate", authMiddleware, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { item_id } = req.body;
+    const userId = req.user.id;
+
+    if (!item_id) {
+      return res.status(400).json({ error: "item_id is required" });
+    }
+
+    // Fetch the NFT
+    const nft = await Item.findOne({
+      where: { id: item_id, user_id: userId },
+    });
+
+    if (!nft) {
+      return res.status(403).json({ error: "Invalid NFT selected" });
+    }
+
+    // Fetch the user and ensure role = creator
+    const user = await User.findOne({
+      where: { id: userId },
+      attributes: ["full_name", "role"]
+    });
+
+    if (!user || user.role !== "creator") {
+      return res.status(403).json({ error: "Only creators can participate" });
+    }
+
+    // Check if user already participated
+    const exists = await EventParticipant.findOne({
+      where: { event_id: eventId, user_id: userId }
+    });
+
+    if (exists) {
+      return res.status(400).json({ error: "You already participated" });
+    }
+
+    // Create participation entry
+    const entry = await EventParticipant.create({
+      event_id: eventId,
+      user_id: userId,
+      item_id,
+      nft_title: nft.title,
+      nft_thumbnail: nft.url_thumbnail || nft.url_storage,
+      nft_creator: user.full_name
+    });
+
+    res.json({
+      success: true,
+      message: "NFT submitted successfully",
+      entry
+    });
+
+  } catch (err) {
+    console.error("Participation Error:", err);
+    res.status(500).json({ error: "Failed to save entry" });
+  }
+});
+
+
+
+app.get("/api/events/:eventId/entries", authMiddleware, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const entries = await EventParticipant.findAll({
+      where: { event_id: eventId },
+      include: [
+        {
+          model: Item,
+          as: "nft",
+          attributes: ["id", "name", "url_thumbnail", "url_storage", "user_id"],
+          include: [
+            {
+              model: User,
+              as: "user",
+              attributes: ["full_name"],
+              where: { role: "creator" }, // only creators
+            },
+          ],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    const formattedEntries = entries.map((entry) => ({
+      id: entry.id,
+      title: entry.nft?.name,
+      thumbnail: entry.nft?.url_thumbnail || entry.nft?.url_storage,
+      creator: entry.nft?.user?.full_name,
+    }));
+
+    res.json({ success: true, entries: formattedEntries });
+  } catch (err) {
+    console.error("Fetch entries error:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch entries" });
+  }
+});
+
 
 // ==========================
 // START SERVER

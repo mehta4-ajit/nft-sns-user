@@ -86,6 +86,8 @@ export default function ProfileSettings() {
           id: p.id || prev.id,
           UserWallets: p.UserWallets || [],
           profileImage: p.profileImage || "", // ✅ fetch image
+          role: p.role || "User" // ✅ ADD THIS
+
         }));
 
         setLoading(false);
@@ -325,9 +327,9 @@ export default function ProfileSettings() {
               <h2 className="mt-3 text-lg sm:text-xl font-semibold text-white">
                 {profile.displayName || "Creator Name"}
               </h2>
-              <p className="text-gray-400 text-md">
-                {profile.role ? profile.role : "User"}
-              </p>            </div>
+              <p className="text-gray-400 text-md capitalize">
+                {profile.role}
+              </p>         </div>
 
             {/* Stats */}
             <div className="bg-[#13131680] rounded-xl p-5 sm:p-6 space-y-3 shadow-md border border-[#18181B]">

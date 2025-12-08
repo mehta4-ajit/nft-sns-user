@@ -2,35 +2,39 @@ import { useState, useEffect } from "react";
 import { FaTwitter, FaInstagram } from "react-icons/fa";
 import { MdAccountBalanceWallet } from "react-icons/md";
 import { FiChevronDown, FiMenu, FiX } from "react-icons/fi";
+import { Link } from "react-router-dom";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeLink, setActiveLink] = useState("");
+  const [userRole, setUserRole] = useState("user");
   const [walletInfo, setWalletInfo] = useState({
     address: "",
     balance: null,
   });
-  const [profileImage, setProfileImage] = useState("/avatar 1.png"); // default avatar
+  const [profileImage, setProfileImage] = useState("/avatar 1.png");
+  const [fullName, setFullName] = useState("");
 
+
+
+  // ✅ Your nav links
   const links = [
-    { name: "Feed", href: "/feed" },
-    { name: "Upload", href: "/upload" },
-    { name: "My NFTs", href: "/mynft" },
-    { name: "Distribution", href: "/distribution" },
-    { name: "Events", href: "/events" },
-    { name: "Leaderboards", href: "/leaderboards" }
-
+    { name: "Feed", href: "/feed", roles: ["user", "creator"] },
+    { name: "Upload", href: "/upload", roles: ["creator"] },
+    { name: "My NFTs", href: "/mynft", roles: ["creator"] },
+    { name: "Distribution", href: "/distribution", roles: ["creator"] },
+    { name: "Events", href: "/events", roles: ["user", "creator"] },
+    { name: "Leaderboards", href: "/leaderboards", roles: ["user", "creator"] },
   ];
 
+  // ✅ Active link logic
   useEffect(() => {
     const currentPath = window.location.pathname;
     const current = links.find((link) => link.href === currentPath);
-    setActiveLink(current ? current.name : "Feed");
-  }, [window.location.pathname]);
+    setActiveLink(current ? current.name : "");
+  }, []);
 
-  // -------------------------
-  // FETCH PROFILE & WALLET INFO
-  // -------------------------
+  // ✅ Fetch profile (ROLE FROM BACKEND ONLY)
   const fetchProfileInfo = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -45,14 +49,30 @@ export default function Navbar() {
       if (!res.ok) return;
 
       const data = await res.json();
+      const profile = data.profile;
 
-      // Set profile image if exists
-      if (data.profile.profileImage) {
-        setProfileImage(data.profile.profileImage);
+
+      // ✅ ROLE FROM BACKEND
+      if (profile?.role) {
+        setUserRole(profile.role.toLowerCase());
       }
 
-      // Set active wallet info
-      const activeWallet = data.profile.UserWallets?.find((w) => w.is_active);
+      // ✅ FULL NAME FROM BACKEND
+      if (profile?.full_name) {
+        setFullName(profile.full_name);
+      }
+
+
+      // ✅ Profile image
+      if (profile?.profileImage) {
+        setProfileImage(profile.profileImage);
+      }
+
+      // ✅ Active wallet
+      const activeWallet = profile?.UserWallets?.find(
+        (w) => w.is_active
+      );
+
       if (activeWallet) {
         setWalletInfo({
           address: activeWallet.address,
@@ -60,7 +80,7 @@ export default function Navbar() {
         });
       }
     } catch (err) {
-      console.error("Failed to fetch profile info:", err);
+      console.error("Failed to load profile:", err);
     }
   };
 
@@ -71,80 +91,93 @@ export default function Navbar() {
   return (
     <nav className="bg-[#0b0b0b] text-white shadow-md sticky top-0 z-50">
       <div className="flex flex-wrap justify-between items-center w-full px-4 sm:px-6 lg:px-8 py-3">
-        {/* LEFT SECTION */}
+        {/* LEFT */}
         <div className="flex items-center space-x-8">
           <div className="flex items-center space-x-3 cursor-pointer">
-            <img src="/logo (2).png" alt="Logo" className="h-12 w-12 sm:h-14 sm:w-14" />
-            <span className="text-xl sm:text-2xl font-bold text-white glow">MINTIOLAB</span>
+            <img
+              src="/logo (2).png"
+              alt="Logo"
+              className="h-12 w-12 sm:h-14 sm:w-14"
+            />
+            <span className="text-xl sm:text-2xl font-bold text-white glow">
+              <Link to="/profile">MINTIOLAB</Link>
+            </span>
           </div>
 
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8 text-gray-300 ml-6">
-            {links.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                onClick={() => setActiveLink(link.name)}
-                className={`relative font-medium transition duration-200 ${activeLink === link.name
+            {links
+              .filter((link) => link.roles.includes(userRole))
+              .map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => setActiveLink(link.name)}
+                  className={`relative font-medium transition duration-200 ${activeLink === link.name
                     ? "text-white"
                     : "text-gray-300 hover:text-cyan-400"
-                  }`}
-              >
-                {link.name}
-                {activeLink === link.name && (
-                  <span className="absolute left-0 -bottom-2 w-full h-[3px] bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transform translate-y-1 transition-all duration-300"></span>
-                )}
-              </a>
-            ))}
+                    }`}
+                >
+                  {link.name}
+                  {activeLink === link.name && (
+                    <span className="absolute left-0 -bottom-2 w-full h-[3px] bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full"></span>
+                  )}
+                </a>
+              ))}
           </div>
         </div>
 
-        {/* RIGHT SECTION */}
+        {/* RIGHT - Desktop */}
         <div className="hidden md:flex items-center space-x-6">
-          {/* Social Icons */}
+          {/* Socials */}
           <div className="flex items-center border border-gray-700 rounded-2xl px-2.5 py-1.5">
-            <a
-              href="#"
-              className="p-2 rounded-full border border-cyan-600 flex items-center justify-center hover:bg-cyan-900 transition"
-            >
+            <a className="p-2 rounded-full border border-cyan-600 hover:bg-cyan-900 transition">
               <FaTwitter className="text-cyan-400 w-3.5 h-3.5" />
             </a>
-            <a
-              href="#"
-              className="p-2 rounded-full border border-cyan-600 flex items-center justify-center ml-2 hover:bg-cyan-900 transition"
-            >
+            <a className="p-2 rounded-full border border-cyan-600 ml-2 hover:bg-cyan-900 transition">
               <FaInstagram className="text-cyan-400 w-3.5 h-3.5" />
             </a>
           </div>
 
           {/* Wallet */}
-          {walletInfo.address ? (
-            <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-2">
-              <MdAccountBalanceWallet className="text-cyan-400 mr-2" />
-              <span className="text-white font-semibold text-sm">{walletInfo.balance} ETH</span>
-              <span className="text-gray-500 mx-2">|</span>
-              <span className="text-gray-400 text-sm">
-                {walletInfo.address.slice(0, 6)}...{walletInfo.address.slice(-4)}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-2 text-gray-400">
-              <MdAccountBalanceWallet className="text-gray-400 mr-2" />
-              Not connected
-            </div>
-          )}
+          <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-2">
+            <MdAccountBalanceWallet className="text-cyan-400 mr-2" />
+            {walletInfo.address ? (
+              <>
+                <span className="text-white font-semibold text-sm">
+                  {walletInfo.balance} ETH
+                </span>
+                <span className="text-gray-500 mx-2">|</span>
+                <span className="text-gray-400 text-sm">
+                  {walletInfo.address.slice(0, 6)}...
+                  {walletInfo.address.slice(-4)}
+                </span>
+              </>
+            ) : (
+              <span className="text-gray-400">Not connected</span>
+            )}
+          </div>
 
           {/* Profile */}
           <div className="flex items-center cursor-pointer group">
             <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-700">
-              <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+              <img
+                src={profileImage}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <FiChevronDown className="ml-1 text-gray-400 group-hover:text-white transition" />
+            <FiChevronDown className="ml-1 text-gray-400" />
+            <span className="ml-2 text-sm text-gray-400 capitalize">
+              {fullName}
+            </span>
           </div>
         </div>
 
+        {/* Mobile Menu Button */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden text-gray-300 focus:outline-none"
+          className="md:hidden text-gray-300"
         >
           {menuOpen ? <FiX size={26} /> : <FiMenu size={26} />}
         </button>
@@ -152,69 +185,44 @@ export default function Navbar() {
 
       {/* MOBILE MENU */}
       {menuOpen && (
-        <div className="md:hidden bg-[#0b0b0b] border-t border-gray-800 animate-fade-in-down">
+        <div className="md:hidden bg-[#0b0b0b] border-t border-gray-800">
           <div className="flex flex-col items-center space-y-4 py-6 text-gray-300">
-            {links.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                onClick={() => {
-                  setActiveLink(link.name);
-                  setMenuOpen(false);
-                }}
-                className={`relative font-medium transition duration-200 ${activeLink === link.name
+            {links
+              .filter((link) => link.roles.includes(userRole))
+              .map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => {
+                    setActiveLink(link.name);
+                    setMenuOpen(false);
+                  }}
+                  className={`relative font-medium transition duration-200 ${activeLink === link.name
                     ? "text-white"
                     : "text-gray-300 hover:text-cyan-400"
-                  }`}
-              >
-                {link.name}
-                {activeLink === link.name && (
-                  <span className="absolute left-0 -bottom-1.5 w-full h-[3px] bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full"></span>
-                )}
-              </a>
-            ))}
+                    }`}
+                >
+                  {link.name}
+                  {activeLink === link.name && (
+                    <span className="absolute left-0 -bottom-1.5 w-full h-[3px] bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full"></span>
+                  )}
+                </a>
+              ))}
 
             <div className="w-3/4 h-px bg-gray-800 my-4" />
 
-            {/* Social icons */}
-            <div className="flex space-x-4">
-              <a
-                href="#"
-                className="p-3 rounded-full border border-cyan-600 flex items-center justify-center hover:bg-cyan-900 transition"
-              >
-                <FaTwitter className="text-cyan-400 w-4 h-4" />
-              </a>
-              <a
-                href="#"
-                className="p-3 rounded-full border border-cyan-600 flex items-center justify-center hover:bg-cyan-900 transition"
-              >
-                <FaInstagram className="text-cyan-400 w-4 h-4" />
-              </a>
-            </div>
-
-            {/* Mobile Wallet */}
-            {walletInfo.address ? (
-              <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-4 mt-4">
-                <MdAccountBalanceWallet className="text-cyan-400 mr-2" />
-                <span className="text-white font-semibold text-sm">{walletInfo.balance} ETH</span>
-                <span className="text-gray-500 mx-2">|</span>
-                <span className="text-gray-400 text-sm">
-                  {walletInfo.address.slice(0, 6)}...{walletInfo.address.slice(-4)}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center border border-gray-700 rounded-2xl px-4 py-4 mt-4 text-gray-400">
-                <MdAccountBalanceWallet className="text-gray-400 mr-2" />
-                Not connected
-              </div>
-            )}
-
-            {/* Profile */}
+            {/* Mobile Profile */}
             <div className="flex items-center space-x-2 mt-4">
               <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-700">
-                <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                <img
+                  src={profileImage}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <span className="text-white font-medium">Creator</span>
+              <span className="text-white font-medium capitalize">
+                {userRole}
+              </span>
             </div>
           </div>
         </div>

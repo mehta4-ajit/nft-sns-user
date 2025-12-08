@@ -1,40 +1,76 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Heart, Share2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { BASE_URL } from './config';
+import Navbar from './navbar';
 
 export default function NFTDisplay() {
-  const [isLiked, setIsLiked] = React.useState(false);
-  const [likeCount, setLikeCount] = React.useState(0);
+  const { id } = useParams(); // get item id from route
+  const navigate = useNavigate();
+
+  const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+
+  useEffect(() => {
+    const fetchItem = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/item/${id}`);
+        const data = await res.json();
+        if (data.success) {
+          setItem(data.item);
+          setLikeCount(data.item.likes || 0); // optional if likes are stored
+        }
+      } catch (err) {
+        console.error('Error fetching item:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItem();
+  }, [id]);
 
   const handleLike = () => {
     setIsLiked(!isLiked);
     setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
   };
 
+  if (loading) return <div className="text-white p-6">Loading...</div>;
+  if (!item) return <div className="text-white p-6">Item not found</div>;
+
+  // Parse tags string into array
+  const tags = item.tags ? item.tags.split(',').map(tag => tag.trim()) : [];
+
   return (
     <div className="min-h-screen bg-black text-white">
+      <Navbar />
+
       {/* Back Button */}
       <div className="p-6">
-        <button className="text-sm flex items-center font-semibold gap-2 px-4 py-2 rounded-lg border border-[#232329] cursor-pointer">
+        <button
+          onClick={() => navigate("/feed")}
+          className="text-sm flex items-center font-semibold gap-2 px-4 py-2 rounded-lg border border-[#232329] cursor-pointer"
+        >
           <ArrowLeft size={20} />
           <span>Back to Feed</span>
         </button>
-
       </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column - Image */}
+
+          {/* Left Column - Image & Actions */}
           <div className="space-y-4">
             <div className="relative rounded-2xl overflow-hidden aspect-square">
               <img
-                src="img card.png"
-                alt="Neon Dreams NFT"
+                src={item.url_thumbnail}
+                alt={item.name}
                 className="w-full h-full object-cover"
               />
             </div>
 
-            {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={handleLike}
@@ -57,77 +93,56 @@ export default function NFTDisplay() {
           {/* Right Column - Details */}
           <div className="space-y-8">
             {/* Creator Info */}
-            <div className="bg-[#131316] border border-[1px] border-[#18181B] p-4 rounded-[15px]">
+            <div className="bg-[#131316] border border-[#18181B] p-4 rounded-[15px]">
               <div className="flex items-center gap-3">
                 <img
-                  src="Avtar Sec.png"
-                  alt="Creator Avatar"
+                  src={item.user?.profileImage || 'avatar-placeholder.png'}
+                  alt={item.user?.full_name || 'Creator Avatar'}
                   className="w-14 h-14 rounded-full object-cover border border-cyan-400"
                 />
                 <div>
                   <p className="text-[14px] text-sm text-gray-400">Creator</p>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-[18px] font-semibold text-white">SpaceVision</h3>
-                    <CheckCircle size={17} className="text-cyan-400" />
+                    <h3 className="text-[18px] font-semibold text-white">{item.user?.full_name}</h3>
+                    {item.user?.isVerified && <CheckCircle size={17} className="text-cyan-400" />}
                   </div>
                 </div>
               </div>
             </div>
 
-
-            {/* Title and Description */}
+            {/* Title & Description */}
             <div className="space-y-3">
-              <h1 className="text-4xl font-bold text-white glow">Neon Dreams #247</h1>
-              <p className="text-[16px] text-[#717675] leading-relaxed">
-                A vibrant digital artwork exploring the intersection of technology and consciousness.
-                This piece represents the fusion of human creativity and digital innovation, capturing
-                the essence of our cybernetic future.
-              </p>
+              <h1 className="text-4xl font-bold text-white glow">{item.name}</h1>
+              <p className="text-[16px] text-[#717675] leading-relaxed">{item.description}</p>
             </div>
 
             {/* Tags */}
             <div className="flex flex-wrap gap-2">
-              <span className="font-semibold px-4 py-1.5 rounded-full border-[1px] border-cyan-400 text-cyan-400 text-sm">
-                Digital Art
-              </span>
-              <span className="font-semibold px-4 py-1.5 rounded-full border-[1px] border-cyan-400 text-cyan-400 text-sm">
-                Cyberpunk
-              </span>
-              <span className="font-semibold px-4 py-1.5 rounded-full border-[1px] border-cyan-400 text-cyan-400 text-sm">
-                Abstract
-              </span>
+              {tags.map((tag, idx) => (
+                <span
+                  key={idx}
+                  className="font-semibold px-4 py-1.5 rounded-full border-[1px] border-cyan-400 text-cyan-400 text-sm"
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
 
             {/* NFT Metadata */}
-            <div className="bg-[#13131680] border border-[1px] border-[#18181B] p-4 rounded-[15px]">
+            <div className="bg-[#13131680] border border-[#18181B] p-4 rounded-[15px]">
               <div className="space-y-5 p-[4px]">
                 <h2 className="text-[18px] font-semibold">NFT Metadata</h2>
-
                 <div className="space-y-4">
-                  {/* Category and Mint Date */}
                   <div className="grid grid-cols-2 gap-x-[16px]">
                     <div>
-                      <p className="text-[#A1A1AA] text-sm mb-1">Category</p>
-                      <p className="font-medium ">0x7f3a...4e2b</p>
-                    </div>
-                    <div>
-                      <p className="text-[#A1A1AA] text-sm mb-1">Mint Date</p>
-                      <p className="font-medium">1/10/2024</p>
-                    </div>
-                  </div>
-
-                  {/* Royalty and Blockchain */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
                       <p className="text-[#A1A1AA] text-sm mb-1">Royalty</p>
-                      <p className="font-medium">7.5%</p>
+                      <p className="font-medium">{item.royalty}%</p>
                     </div>
                     <div>
                       <p className="text-[#A1A1AA] text-sm mb-1">Blockchain</p>
                       <p className="font-medium">Polygon</p>
                     </div>
                   </div>
-
                   {/* Contract Address */}
                   <div className="w-[528px] border-t border-[1px] border-[#2323294D] mt-4 mb-4"></div>
 
@@ -156,27 +171,27 @@ export default function NFTDisplay() {
 
                 <div className="flex flex-wrap gap-0 m-0 p-0 -ml-4">
                   <img
-                    src="new iconSet (3).png"
+                    src="/new iconSet (3).png"
                     alt="Twitter"
                     className="w-[80px] h-[80px] sm:w-[70px] sm:h-[70px] xs:w-[60px] xs:h-[60px] object-cover rounded-[10px] mh-[-40px]"
                   />
                   <img
-                    src="new iconSet (4).png"
+                    src="/new iconSet (4).png"
                     alt="Instagram"
                     className="w-[80px] h-[80px] sm:w-[70px] sm:h-[70px] xs:w-[60px] xs:h-[60px] object-cover rounded-[10px] mh-[-40px]"
                   />
                   <img
-                    src="new iconSet (5).png"
+                    src="/new iconSet (5).png"
                     alt="Facebook"
                     className="w-[80px] h-[80px] sm:w-[70px] sm:h-[70px] xs:w-[60px] xs:h-[60px] object-cover rounded-[10px] mh-[-40px]"
                   />
                   <img
-                    src="new iconSet (6).png"
+                    src="/new iconSet (6).png"
                     alt="LinkedIn"
                     className="w-[80px] h-[80px] sm:w-[70px] sm:h-[70px] xs:w-[60px] xs:h-[60px] object-cover rounded-[10px] mh-[-40px]"
                   />
                   <img
-                    src="new iconSet (8).png"
+                    src="/new iconSet (8).png"
                     alt="TikTok"
                     className="w-[80px] h-[80px] sm:w-[70px] sm:h-[70px] xs:w-[60px] xs:h-[60px] object-cover rounded-[10px] mh-[-40px]"
                   />
